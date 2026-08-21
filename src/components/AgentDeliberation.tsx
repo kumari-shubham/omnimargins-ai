@@ -80,7 +80,7 @@ export const AgentDeliberation: React.FC<AgentDeliberationProps> = ({
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <span>Multi-Agent Strategy Board</span>
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
-                Gemini 2.5 Consensus
+                Gemini 3.7 Flash Consensus
               </span>
             </h2>
           </div>

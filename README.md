@@ -1,5 +1,5 @@
 # OmniMetrics AI — Autonomous Multimodal Data Science & Strategy Studio
-*Built for the Google for Startups AI Hackathon • Powered by Google Gemini 2.5*
+*Built for the Google for Startups AI Hackathon • Powered by Google Gemini 3.7 Flash*
 
 ---
 

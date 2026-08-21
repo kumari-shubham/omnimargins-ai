@@ -82,7 +82,7 @@ Provide structured deliberation from 3 distinct agent personas in valid JSON for
 Output ONLY raw valid JSON array, no markdown backticks.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.7-flash',
         contents: prompt,
       });
 
@@ -376,7 +376,7 @@ Return a structured JSON answer in this exact schema:
 Output ONLY raw valid JSON, no markdown.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.7-flash',
         contents: prompt,
       });
 

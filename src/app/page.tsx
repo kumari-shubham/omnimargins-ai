@@ -279,7 +279,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="w-full border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        <p>OmniMetrics AI • Built for Google for Startups AI Hackathon • Powered by Google Gemini 2.5</p>
+        <p>OmniMetrics AI • Built for Google for Startups AI Hackathon • Powered by Google Gemini 3.7 Flash</p>
       </footer>
     </div>
   );

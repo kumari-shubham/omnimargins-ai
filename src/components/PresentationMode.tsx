@@ -106,7 +106,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
             </h1>
 
             <p className="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-              Autonomous Multimodal Strategic Analysis Powered by Gemini 2.5 & Grounded Data Science
+              Autonomous Multimodal Strategic Analysis Powered by Gemini 3.7 Flash & Grounded Data Science
             </p>
 
             <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto pt-6 text-left">

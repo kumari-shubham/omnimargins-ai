@@ -160,7 +160,7 @@ ${riskAgent?.recommendations.map((r) => `- [ ] ${r}`).join('\n')}
               <span>•</span>
               <span>Sample: {dataset.recordCount.toLocaleString()} records</span>
               <span>•</span>
-              <span>Engine: Google Gemini 2.5 + Grounded Sandbox</span>
+              <span>Engine: Google Gemini 3.7 Flash + Grounded Sandbox</span>
             </div>
           </div>
 
