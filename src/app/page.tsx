@@ -1,69 +1,286 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { PRESET_DATASETS } from '@/lib/datasets';
+import { DatasetPreset, AgentInsight } from '@/lib/types';
+import {
+  calculateNumericalStats,
+  calculateCorrelationMatrix,
+  calculateTimeSeriesForecast,
+  generateCohortMatrix,
+  detectAnomalies,
+} from '@/lib/statsEngine';
+import { generateAgentDeliberation } from '@/lib/gemini';
+import { Navbar } from '@/components/Navbar';
+import { DatasetSelector } from '@/components/DatasetSelector';
+import { MetricCards } from '@/components/MetricCards';
+import { AgentDeliberation } from '@/components/AgentDeliberation';
+import { RevenueForecastChart } from '@/components/Charts/RevenueForecastChart';
+import { CohortHeatmap } from '@/components/Charts/CohortHeatmap';
+import { CorrelationScatter } from '@/components/Charts/CorrelationScatter';
+import { AnomalyInspector } from '@/components/Charts/AnomalyInspector';
+import { ChannelBreakdown } from '@/components/Charts/ChannelBreakdown';
+import { WhatIfSimulator } from '@/components/WhatIfSimulator';
+import { QueryConsole } from '@/components/QueryConsole';
+import { ExecutiveReportModal } from '@/components/ExecutiveReportModal';
+import { PresentationMode } from '@/components/PresentationMode';
+import { ApiKeyModal } from '@/components/ApiKeyModal';
+import { Sparkles, BrainCircuit, BarChart3 } from 'lucide-react';
 
 export default function Home() {
+  const [presets, setPresets] = useState<DatasetPreset[]>(PRESET_DATASETS);
+  const [activeDataset, setActiveDataset] = useState<DatasetPreset>(PRESET_DATASETS[0]);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [insights, setInsights] = useState<AgentInsight[]>([]);
+  const [isDeliberating, setIsDeliberating] = useState<boolean>(false);
+  const [isPresentationOpen, setIsPresentationOpen] = useState<boolean>(false);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+
+  // Load API Key from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedKey = localStorage.getItem('omnimargins_gemini_api_key');
+      if (savedKey) setApiKey(savedKey);
+    }
+  }, []);
+
+  const handleSaveApiKey = (key: string) => {
+    setApiKey(key);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('omnimargins_gemini_api_key', key);
+    }
+  };
+
+  // Run multi-agent deliberation on dataset load or switch
+  const runDeliberation = async (dataset: DatasetPreset) => {
+    setIsDeliberating(true);
+    try {
+      const agentInsights = await generateAgentDeliberation(dataset, apiKey);
+      setInsights(agentInsights);
+    } catch (e) {
+      console.error('Deliberation failed:', e);
+    } finally {
+      setIsDeliberating(false);
+    }
+  };
+
+  useEffect(() => {
+    runDeliberation(activeDataset);
+  }, [activeDataset, apiKey]);
+
+  const handleSelectPreset = (preset: DatasetPreset) => {
+    setActiveDataset(preset);
+  };
+
+  const handleCustomDatasetLoaded = (newPreset: DatasetPreset) => {
+    setPresets((prev) => [newPreset, ...prev]);
+    setActiveDataset(newPreset);
+  };
+
+  // Derived Analytics Data
+  const numericColumns = useMemo(() => {
+    if (!activeDataset.data || activeDataset.data.length === 0) return [];
+    return Object.keys(activeDataset.data[0]).filter(
+      (k) => typeof activeDataset.data[0][k] === 'number'
+    );
+  }, [activeDataset]);
+
+  const categoryColumns = useMemo(() => {
+    if (!activeDataset.data || activeDataset.data.length === 0) return [];
+    return Object.keys(activeDataset.data[0]).filter(
+      (k) => typeof activeDataset.data[0][k] === 'string' && k !== 'id' && !k.toLowerCase().includes('name')
+    );
+  }, [activeDataset]);
+
+  const correlations = useMemo(() => {
+    return calculateCorrelationMatrix(activeDataset.data, numericColumns);
+  }, [activeDataset, numericColumns]);
+
+  const anomalies = useMemo(() => {
+    return detectAnomalies(activeDataset.data, activeDataset.targetMetric);
+  }, [activeDataset]);
+
+  const forecastData = useMemo(() => {
+    // Generate 6 historical points from dataset
+    const periods = ['6M Ago', '5M Ago', '4M Ago', '3M Ago', '2M Ago', 'Current'];
+    const totalSum = activeDataset.data.reduce((a, b) => a + (Number(b[activeDataset.targetMetric]) || 0), 0);
+    const avg = totalSum / (activeDataset.data.length || 1);
+
+    const history = periods.map((period, i) => ({
+      period,
+      value: Math.round(avg * (0.8 + i * 0.04 + (Math.random() * 0.05 - 0.025))),
+    }));
+
+    return calculateTimeSeriesForecast(history, 6);
+  }, [activeDataset]);
+
+  const cohortData = useMemo(() => {
+    const cohortNames = ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4', '2026-Q1', '2026-Q2'];
+    return generateCohortMatrix(cohortNames);
+  }, []);
+
+  const totalBaseVal = useMemo(() => {
+    return activeDataset.data.reduce((a, b) => a + (Number(b[activeDataset.targetMetric]) || 0), 0);
+  }, [activeDataset]);
+
+  // Speech Synthesis
+  const handleSpeakText = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleToggleVoiceBriefing = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else if (insights && insights.length > 0) {
+      const briefing = `OmniMetrics Executive Briefing for ${activeDataset.title}. Overall consensus: ${insights[0]?.summary}. Growth outlook: ${insights[1]?.summary}. Risk alert: ${insights[2]?.summary}`;
+      handleSpeakText(briefing);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+      
+      {/* Top Navbar */}
+      <Navbar
+        onOpenPresentation={() => setIsPresentationOpen(true)}
+        onOpenReport={() => setIsReportOpen(true)}
+        onOpenApiKey={() => setIsApiKeyModalOpen(true)}
+        isSpeaking={isSpeaking}
+        onToggleSpeech={handleToggleVoiceBriefing}
+        hasApiKey={!!apiKey && apiKey.length > 10}
+        activeDatasetTitle={activeDataset.title}
+      />
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+        
+        {/* Dataset Switcher & Ingestion Bar */}
+        <DatasetSelector
+          presets={presets}
+          activePresetId={activeDataset.id}
+          onSelectPreset={handleSelectPreset}
+          onCustomDatasetLoaded={handleCustomDatasetLoaded}
+          isLoading={isDeliberating}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        {/* 4 High-Level Metric Cards */}
+        <MetricCards dataset={activeDataset} />
+
+        {/* Hero Multi-Agent Strategy Board */}
+        <AgentDeliberation
+          insights={insights}
+          isLoading={isDeliberating}
+          onRefresh={() => runDeliberation(activeDataset)}
+          onSpeakText={handleSpeakText}
+          isSpeaking={isSpeaking}
+        />
+
+        {/* Interactive Data Visualizations Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Forecast Chart */}
+          <RevenueForecastChart
+            data={forecastData}
+            metricLabel={activeDataset.targetMetric}
+            currency={activeDataset.currency}
+          />
+
+          {/* Cohort Retention Heatmap */}
+          <CohortHeatmap
+            cohorts={cohortData}
+            currency={activeDataset.currency}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        {/* Secondary Analytics: Correlation Matrix & Anomaly Inspector */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7">
+            <CorrelationScatter
+              correlations={correlations}
+              rawData={activeDataset.data}
+              numericColumns={numericColumns}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+
+          <div className="lg:col-span-5">
+            <AnomalyInspector
+              anomalies={anomalies}
+              metricName={activeDataset.targetMetric}
+              currency={activeDataset.currency}
+            />
+          </div>
         </div>
+
+        {/* Segment Distribution */}
+        {categoryColumns.length > 0 && (
+          <ChannelBreakdown
+            rawData={activeDataset.data}
+            targetMetric={activeDataset.targetMetric}
+            categoryColumns={categoryColumns}
+            currency={activeDataset.currency}
+          />
+        )}
+
+        {/* Interactive What-If Scenario Simulator */}
+        <WhatIfSimulator
+          baseTotal={totalBaseVal}
+          category={activeDataset.category}
+        />
+
+        {/* Natural Language & Voice Query Console */}
+        <QueryConsole
+          dataset={activeDataset}
+          apiKey={apiKey}
+          onSpeakText={handleSpeakText}
+        />
+
       </main>
+
+      {/* Modals */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        apiKey={apiKey}
+        onSaveKey={handleSaveApiKey}
+      />
+
+      <ExecutiveReportModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        dataset={activeDataset}
+        insights={insights}
+      />
+
+      <PresentationMode
+        isOpen={isPresentationOpen}
+        onClose={() => setIsPresentationOpen(false)}
+        dataset={activeDataset}
+        insights={insights}
+      />
+
+      {/* Footer */}
+      <footer className="w-full border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+        <p>OmniMetrics AI • Built for Google for Startups AI Hackathon • Powered by Google Gemini 2.5</p>
+      </footer>
     </div>
   );
 }
