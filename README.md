@@ -144,9 +144,3 @@ Open **`http://localhost:3000`** in your browser.
 - **AI / LLM SDK**: Google GenAI SDK (`@google/genai` — Gemini 2.5 Flash)
 - **Audio / Voice**: Web Speech API (SpeechRecognition & SpeechSynthesis)
 - **UI FX**: Lucide React, Canvas-Confetti, Tailwind Merge
-
----
-
-## 🏆 Google for Startups AI Hackathon Pitch Summary
-
-> *"OmniMetrics AI bridges the gap between pure data science and executive decision-making. By combining deterministic mathematical rigor with Google Gemini's cognitive multi-agent reasoning, we deliver non-hallucinatory, institutional-grade strategic intelligence that empowers founders to optimize unit economics, extend cash runway, and pitch with undeniable data."*
